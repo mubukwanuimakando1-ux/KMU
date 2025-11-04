@@ -1,0 +1,678 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>KMU Library Dashboard</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <!-- Firebase SDKs -->
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-storage.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+  <style>
+:root {
+  --primary: #1976d2;
+  --secondary: #fff;
+  --background: #f4f6fa;
+  --shadow: rgba(0,0,0,0.07) 0 3px 12px;
+  --highlight: #d1ecf1;
+  --error: #cc0000;
+  --success: #14863e;
+  --warn: #ffb91d;
+  --fade: .25s cubic-bezier(.49,.41,.58,.74);
+  --font: 'Segoe UI', Arial, sans-serif;
+}
+[data-theme="dark"] {
+  --primary: #009be7;
+  --secondary: #22272e;
+  --background: #13151a;
+  --highlight: #18203a;
+  --shadow: rgba(0,0,0,0.14) 0 4px 13px;
+  --error: #ec4646;
+  --success: #37c978;
+  color: #e7eaf1;
+}
+body,html {
+  font-family: var(--font);
+  background: var(--background);
+  color: #222;
+  min-height: 100vh; margin:0; padding:0;
+}
+[data-theme="dark"] body, [data-theme="dark"] html { color: #e7eaf1;}
+header {
+  display:flex; justify-content:space-between; align-items:center;
+  background: var(--primary);
+  color: var(--secondary);
+  padding:.7em 2vw;
+  box-shadow:var(--shadow);
+}
+.kmu-logo {height: 46px; margin-right:1.1em;vertical-align:middle;}
+.kmu-title { font-size:1.52em;font-weight: 700;letter-spacing:1px;}
+.header-actions {display:flex;align-items:center;gap:1.2em;}
+#themeToggle { border:none;background:none;font-size:1.2em;cursor:pointer;color:var(--secondary);}
+.sys-health {
+  font-weight: 500;
+  padding: .25em 1em;
+  border-radius: 2em;
+  background: rgba(255,255,255,0.12);
+}
+.sys-health.online {color:var(--success);}
+.sys-health.offline {color:var(--error);}
+main {
+  min-height: 85vh; padding: 0 1vw; margin-top:2em;
+  display: flex;
+  flex-direction: column;
+  row-gap: 1.5em;
+  align-items: stretch;
+}
+.dashboard-menu {
+  margin-bottom: 0.9em;
+  display:flex;justify-content:space-between;align-items:center;
+}
+.dropdown-menu {
+  position:relative;display:inline-block;
+}
+.dropdown-menu button {
+  background:none;border:none;
+  color: var(--primary);font-size:1.13em;font-weight:550;
+  cursor:pointer;padding: .3em 1.1em .3em .2em;
+}
+.menu-content {
+  display: none;
+  position:absolute;z-index:99;
+  right:.2em;top:110%;
+  background:var(--secondary);
+  box-shadow:var(--shadow);
+  padding:.7em 0;min-width:220px;
+  border-radius:6px;
+}
+.menu-content.show {display:block;}
+.menu-content a {
+  color: #1a304a; text-decoration: none;padding:.59em 1.16em;display:block;font-weight:500;
+}
+.menu-content a:hover {background:var(--highlight);}
+@media(max-width:500px){.menu-content{min-width:140px}}
+
+#dashboardTabs {
+  display: flex;gap:.14em;flex-wrap:wrap;background:var(--highlight);
+  border-radius: 0.4em;
+  box-shadow: var(--shadow);
+  justify-content: flex-start;
+}
+.tab-btn {
+  border:none;
+  background:none;
+  font-size:1.065em;
+  padding:.78em 1.25em;
+  cursor:pointer;
+  transition:background .16s, color .14s;
+  color:var(--primary);
+  font-weight:550;
+  border-radius:8px 8px 0 0;
+}
+.tab-btn.active {
+  background:var(--primary);
+  color:var(--secondary);
+}
+.tab-btn:focus {outline:2px solid var(--primary);}
+.dashboard-section {
+  background:var(--secondary);
+  border-radius:0 0 8px 8px;
+  box-shadow:var(--shadow);
+  padding:1.1em 1.6em 2em 1.6em;
+  margin-top:0.2em;
+  display:none;
+  animation:fadeIn .42s;
+}
+.dashboard-section.active {display:block;}
+@keyframes fadeIn {from{opacity:0;transform:translateY(19px);}to{opacity:1;transform:translateY(0);}}
+h2 {margin:0 0 .6em;}
+h3 {margin-top:.8em;margin-bottom:.32em;}
+label{font-weight:500;}
+.btn {
+  border: none;
+  background: var(--primary);
+  color: var(--secondary);
+  border-radius: 4px;
+  font-size: 1.04em;
+  padding: .56em 1.4em;
+  cursor: pointer;
+  margin: .13em .5em .13em 0;
+  font-weight: 500;
+  box-shadow: rgba(0,0,0,0.04) 0 2px 8px;
+  transition:background .18s,color .16s;
+}
+.btn:active {background: #1364a5;}
+input[type="text"],input[type="email"],input[type="number"],input[type="password"],textarea,select {
+  border:1px solid #b2c7d9;border-radius:3.8px;
+  padding:.64em;width:99%;
+  margin:.13em 0 .8em 0; box-sizing:border-box;
+}
+input:focus,textarea:focus,select:focus {border-color:var(--primary);}
+table {
+  width: 98%;border-collapse:collapse;margin:1em 0;
+  font-size: 1em;
+}
+td,th {border-bottom:1px solid #e2e7ed;padding:.52em .44em;}
+tr:nth-child(even){background:var(--highlight);}
+th {text-align:left;background:var(--background);}
+@media(max-width:716px){main{padding:0}.dashboard-section{padding:0.6em 0.4em}}
+footer {
+  background: var(--highlight);
+  color: #344a5b;
+  padding: .92em 2vw;
+  text-align: center;
+  font-size: .99em;
+}
+.terms {margin: 0;}
+  </style>
+</head>
+<body data-theme="light">
+  <header>
+    <img src="kmu-logo.png" alt="KMU Logo" class="kmu-logo">
+    <span class="kmu-title">KMU Central Library Dashboard</span>
+    <div class="header-actions">
+      <button id="themeToggle" title="Switch Theme">🌙</button>
+      <span id="sysHealth" class="sys-health">System Health: Checking…</span>
+    </div>
+  </header>
+  <main>
+    <div class="dashboard-menu">
+      <span>Welcome, <b id="userEmail"></b></span>
+      <div class="dropdown-menu">
+        <button id="menuDropBtn">☰ Menu ▼</button>
+        <div class="menu-content" id="menuDropContent">
+          <a href="#" id="profileView">Profile & Security</a>
+          <a href="#" id="changeTheme">Toggle Theme</a>
+          <a href="#" id="logoutBtn">Logout</a>
+        </div>
+      </div>
+    </div>
+    <nav id="dashboardTabs" aria-label="Library dashboard features">
+      <button class="tab-btn active" data-tab="catalog">Catalog Mgmt</button>
+      <button class="tab-btn" data-tab="borrow">Borrow/Return</button>
+      <button class="tab-btn" data-tab="stud-search">Student Search</button>
+      <button class="tab-btn" data-tab="lockers">Locker Mgmt</button>
+      <button class="tab-btn" data-tab="overdue">Overdue Alerts</button>
+      <button class="tab-btn" data-tab="fines">Fines & Payment</button>
+      <button class="tab-btn" data-tab="reserv">Reservations</button>
+      <button class="tab-btn" data-tab="digital">Digital Materials</button>
+      <button class="tab-btn" data-tab="barcode">Manual Barcode</button>
+      <button class="tab-btn" data-tab="inventory">Inventory Summary</button>
+      <button class="tab-btn" data-tab="usage">Usage Analytics</button>
+      <button class="tab-btn" data-tab="staff-notif">Staff Notifications</button>
+      <button class="tab-btn" data-tab="stud-msg">Student Messaging</button>
+      <button class="tab-btn" data-tab="locker-over">Locker Overview</button>
+      <button class="tab-btn" data-tab="rules">Library Rules</button>
+      <button class="tab-btn" data-tab="export">Export Reports</button>
+      <button class="tab-btn" data-tab="presence">Real-Time Presence</button>
+      <button class="tab-btn" data-tab="roster">Staff Roster</button>
+      <button class="tab-btn" data-tab="feedback">Feedback Form</button>
+      <button class="tab-btn" data-tab="adminnotifs">Notify Admin</button>
+    </nav>
+    <!-- 1. Catalog Management -->
+    <section class="dashboard-section active" id="tab-catalog">
+      <h2>Library Catalog Management</h2>
+      <input type="text" id="bookTitle" placeholder="Book Title">
+      <input type="text" id="bookAuthor" placeholder="Author">
+      <input type="text" id="bookISBN" placeholder="ISBN">
+      <button class="btn" onclick="addBook()">Add Book</button>
+      <h3>Catalog</h3>
+      <table id="catalogTable"><thead><tr><th>Title</th><th>Author</th><th>ISBN</th><th>Actions</th></tr></thead><tbody></tbody></table>
+    </section>
+    <!-- 2. Borrow/Return -->
+    <section class="dashboard-section" id="tab-borrow">
+      <h2>Book Borrowing & Returns</h2>
+      <input type="text" id="borrowStudent" placeholder="Student ID">
+      <input type="text" id="borrowBook" placeholder="Book ISBN">
+      <button class="btn" onclick="borrowBook()">Borrow</button>
+      <button class="btn" onclick="returnBook()">Return</button>
+      <table id="borrowTable"><thead><tr><th>Student</th><th>Book</th><th>Status</th><th>Actions</th></tr></thead><tbody></tbody></table>
+    </section>
+    <!-- 3. Student Search -->
+    <section class="dashboard-section" id="tab-stud-search">
+      <h2>Student Search</h2>
+      <input type="text" id="searchStudentId" placeholder="Student ID">
+      <button class="btn" onclick="searchStudent()">Search</button>
+      <div id="studentSearchResult"></div>
+    </section>
+    <!-- 4. Locker Management -->
+    <section class="dashboard-section" id="tab-lockers">
+      <h2>Locker Management System</h2>
+      <input type="number" id="lockerNum" placeholder="Locker Num">
+      <input type="text" id="lockerStudent" placeholder="Student ID">
+      <button class="btn" onclick="assignLocker()">Assign</button>
+      <ul id="lockerList"></ul>
+    </section>
+    <!-- 5. Overdue Alerts -->
+    <section class="dashboard-section" id="tab-overdue">
+      <h2>Overdue Book Alerts</h2>
+      <button class="btn" onclick="loadOverdues()">Refresh List</button>
+      <ul id="overdueList"></ul>
+    </section>
+    <!-- 6. Fines & Payment -->
+    <section class="dashboard-section" id="tab-fines">
+      <h2>Fines and Payments Tracker</h2>
+      <input type="text" id="fineStudent" placeholder="Student ID">
+      <input type="number" id="fineAmount" placeholder="Amount">
+      <button class="btn" onclick="addFine()">Add Fine</button>
+      <ul id="fineList"></ul>
+    </section>
+    <!-- 7. Reservations -->
+    <section class="dashboard-section" id="tab-reserv">
+      <h2>Reservations System</h2>
+      <input type="text" id="reservStudent" placeholder="Student ID">
+      <input type="text" id="reservBook" placeholder="Book ISBN">
+      <button class="btn" onclick="reserveBook()">Reserve</button>
+      <ul id="reservList"></ul>
+    </section>
+    <!-- 8. Digital Materials -->
+    <section class="dashboard-section" id="tab-digital">
+      <h2>Digital Materials Access</h2>
+      <input type="file" id="uploadMaterial">
+      <button class="btn" onclick="addMaterial()">Upload</button>
+      <ul id="materialList"></ul>
+    </section>
+    <!-- 9. Manual Barcode -->
+    <section class="dashboard-section" id="tab-barcode">
+      <h2>Book Barcode (Manual Entry)</h2>
+      <input type="text" id="barcodeISBN" placeholder="Book ISBN">
+      <button class="btn" onclick="addManualBarcode()">Add</button>
+      <ul id="barcodeList"></ul>
+    </section>
+    <!-- 10. Inventory Summary -->
+    <section class="dashboard-section" id="tab-inventory">
+      <h2>Inventory Summary Dashboard</h2>
+      <div id="inventorySummary"></div>
+    </section>
+    <!-- 11. Usage Analytics -->
+    <section class="dashboard-section" id="tab-usage">
+      <h2>Library Usage Analytics</h2>
+      <canvas id="usageChart" width="320" height="121"></canvas>
+      <div id="usageStats"></div>
+    </section>
+    <!-- 12. Staff Notifications -->
+    <section class="dashboard-section" id="tab-staff-notif">
+      <h2>Staff Notifications</h2>
+      <textarea id="staffNotifMsg" placeholder="Type notification…"></textarea>
+      <button class="btn" onclick="addStaffNotif()">Send</button>
+      <ul id="staffNotifList"></ul>
+    </section>
+    <!-- 13. Student Messaging -->
+    <section class="dashboard-section" id="tab-stud-msg">
+      <h2>Student Messaging</h2>
+      <input type="text" id="msgStudent" placeholder="Student ID">
+      <textarea id="msgText" placeholder="Message"></textarea>
+      <button class="btn" onclick="sendStudentMsg()">Send</button>
+      <ul id="msgList"></ul>
+    </section>
+    <!-- 14. Locker Overview -->
+    <section class="dashboard-section" id="tab-locker-over">
+      <h2>Locker Status Overview</h2>
+      <button class="btn" onclick="lockerOverview()">Refresh</button>
+      <div id="lockerOverview"></div>
+    </section>
+    <!-- 15. Library Rules -->
+    <section class="dashboard-section" id="tab-rules">
+      <h2>Library Rules Display</h2>
+      <textarea id="rulesText" placeholder="Rules…"></textarea>
+      <button class="btn" onclick="saveRules()">Save</button>
+      <div id="rulesView"></div>
+    </section>
+    <!-- 16. Export Reports -->
+    <section class="dashboard-section" id="tab-export">
+      <h2>Export Library Reports</h2>
+      <button class="btn" onclick="exportLibrary('pdf')">Export PDF</button>
+      <button class="btn" onclick="exportLibrary('word')">Export Word</button>
+      <button class="btn" onclick="exportLibrary('excel')">Export Excel</button>
+    </section>
+    <!-- 17. Real-Time Presence -->
+    <section class="dashboard-section" id="tab-presence">
+      <h2>Real-Time Presence Tracking</h2>
+      <button class="btn" onclick="loadPresence()">Refresh</button>
+      <ul id="presenceList"></ul>
+    </section>
+    <!-- 18. Staff Roster -->
+    <section class="dashboard-section" id="tab-roster">
+      <h2>Staff Duty Roster</h2>
+      <input type="text" id="rosterStaff" placeholder="Staff Name/ID">
+      <input type="date" id="rosterDate">
+      <button class="btn" onclick="addRoster()">Add Shift</button>
+      <ul id="rosterList"></ul>
+    </section>
+    <!-- 19. Feedback -->
+    <section class="dashboard-section" id="tab-feedback">
+      <h2>Feedback Form</h2>
+      <textarea id="feedbackMsg" placeholder="Suggestion or complaint…"></textarea>
+      <button class="btn" onclick="addFeedback()">Submit</button>
+      <ul id="feedbackList"></ul>
+    </section>
+    <!-- 20. Auto Notify Admin -->
+    <section class="dashboard-section" id="tab-adminnotifs">
+      <h2>Auto Notifications to Admin</h2>
+      <button class="btn" onclick="adminNotify()">Notify Admin</button>
+      <div id="adminNotifStat"></div>
+    </section>
+  </main>
+  <footer>
+    <p class="terms">KMU Central &copy; 2025. Librarian use only. Unauthorized access prohibited.</p>
+  </footer>
+<script>
+/* 1. Firebase config: (Change this for your project) */
+const firebaseConfig = {
+  apiKey: "AIzaSyDrjo_HDQ1RRkjA-zXgZtuFovI7zg2yma0",
+  authDomain: "kmu-digita-rsc-mnt-system.firebaseapp.com",
+  databaseURL: "https://kmu-digita-rsc-mnt-system-default-rtdb.firebaseio.com",
+  projectId: "kmu-digita-rsc-mnt-system",
+  storageBucket: "kmu-digita-rsc-mnt-system.firebasestorage.app",
+  messagingSenderId: "908284620214",
+  appId: "1:908284620214:web:e76e9a4757c162eea1a517",
+  measurementId: "G-JEPQ1YMVNE"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+const auth = firebase.auth();
+const rtdb = firebase.database();
+
+/* 2. Session check */
+const session = JSON.parse(sessionStorage.getItem("kmu_session") || "null");
+if (!session || session.role !== "library") {
+  alert("You must login as Librarian!"); window.location = "index.html";
+}
+document.getElementById("userEmail").innerText = ((auth.currentUser && auth.currentUser.email) || session.email || "...");
+
+function applyTheme(theme) {
+  document.body.dataset.theme = theme || "light";
+  document.getElementById("themeToggle").textContent = theme === "dark" ? "☀️" : "🌙";
+}
+applyTheme(localStorage.getItem("dashboard-theme") || "light");
+document.getElementById("themeToggle").onclick = () => {
+  let cur = document.body.dataset.theme;
+  let next = cur === "dark" ? "light" : "dark";
+  applyTheme(next); localStorage.setItem("dashboard-theme", next);
+};
+document.getElementById("changeTheme").onclick = ()=>{document.getElementById("themeToggle").click();};
+let sysHealth = document.getElementById("sysHealth");
+rtdb.ref(".info/connected").on("value", snap=>{
+  let s = snap.val()? "Online" : "Offline";
+  sysHealth.textContent="System Health: "+s;
+  sysHealth.className = "sys-health "+(s==="Online"?"online":"offline");
+});
+document.getElementById("menuDropBtn").onclick = function(){
+  document.getElementById("menuDropContent").classList.toggle("show");
+};
+window.onclick = function(event) {
+  if(!event.target.matches("#menuDropBtn")) {
+    document.getElementById("menuDropContent").classList.remove("show");
+  }
+};
+document.getElementById("logoutBtn").onclick = ()=>{
+  sessionStorage.removeItem("kmu_session");
+  auth.signOut().then(()=>{window.location="index.html";});
+};
+
+/* 3. Tabs */
+const tabBtns = document.querySelectorAll(".tab-btn");
+tabBtns.forEach(btn=>{
+  btn.onclick=()=>{
+    tabBtns.forEach(b=>b.classList.remove("active"));
+    document.querySelectorAll(".dashboard-section").forEach(
+      s=>s.classList.remove("active"));
+    btn.classList.add("active");
+    document.getElementById("tab-"+btn.dataset.tab).classList.add("active");
+  }
+});
+
+/* 1. Catalog Management */
+window.addBook=async()=>{
+  let t=document.getElementById("bookTitle").value.trim(),a=document.getElementById("bookAuthor").value.trim(),i=document.getElementById("bookISBN").value.trim();
+  if(!t||!a||!i)return;
+  await db.collection("books").add({title:t,author:a,isbn:i});
+  loadCatalog();
+};
+async function loadCatalog(){
+  let tb=document.querySelector("#catalogTable tbody");tb.innerHTML="";
+  let q=await db.collection("books").limit(30).get();
+  q.forEach(doc=>{
+    let b=doc.data();tb.innerHTML+=`<tr><td>${b.title}</td><td>${b.author}</td><td>${b.isbn}</td>
+    <td><button class="btn" onclick="deleteBook('${doc.id}')">Del</button></td></tr>`;
+  });
+}window.deleteBook=async(id)=>{await db.collection("books").doc(id).delete();loadCatalog();};loadCatalog();
+
+/* 2. Borrow/Return */
+window.borrowBook=async()=>{
+  let s=document.getElementById("borrowStudent").value,i=document.getElementById("borrowBook").value;
+  if(!s||!i)return;
+  await db.collection("borrows").add({student:s,isbn:i,status:"borrowed", time:firebase.firestore.FieldValue.serverTimestamp()});
+  loadBorrow();
+};window.returnBook=async()=>{
+  let s=document.getElementById("borrowStudent").value,i=document.getElementById("borrowBook").value;
+  if(!s||!i)return;
+  let q=await db.collection("borrows").where("student","==",s).where("isbn","==",i).orderBy("time","desc").get();
+  if(!q.empty){await db.collection("borrows").doc(q.docs[0].id).update({status:"returned",returned:firebase.firestore.FieldValue.serverTimestamp()});}
+  loadBorrow();
+};
+async function loadBorrow(){
+  let tb=document.querySelector("#borrowTable tbody");tb.innerHTML="";
+  let q=await db.collection("borrows").limit(28).get();
+  q.forEach(doc=>{
+    let b=doc.data();
+    tb.innerHTML+=`<tr><td>${b.student}</td><td>${b.isbn}</td><td>${b.status}</td>
+      <td><button class="btn" onclick="window.returnBook()">Return</button></td></tr>`;
+  });
+}loadBorrow();
+
+/* 3. Student Search */
+window.searchStudent=async()=>{
+  let id=document.getElementById("searchStudentId").value;
+  if(!id)return;
+  let doc=await db.collection("students").doc(id).get();
+  let d=doc.data();
+  document.getElementById("studentSearchResult").innerText=d?`Name: ${d.name||"-"}, Locker: ${d.locker||"-"}`:"Not found";
+};
+
+/* 4. Locker Management */
+window.assignLocker=async()=>{
+  let n=document.getElementById("lockerNum").value,s=document.getElementById("lockerStudent").value;
+  if(!n||!s)return;
+  await db.collection("lockers").doc(""+n).set({number:n,student:s,status:"assigned"});
+  loadLockers();
+};
+async function loadLockers(){
+  let ul=document.getElementById("lockerList");ul.innerHTML="";
+  let q=await db.collection("lockers").orderBy("number","asc").limit(22).get();
+  q.forEach(doc=>{
+    let l=doc.data();
+    ul.innerHTML+=`<li>Locker ${l.number} → ${l.student||"-"} [${l.status||"free"}]</li>`;
+  });
+}loadLockers();
+
+/* 5. Overdue Alerts */
+window.loadOverdues=async()=>{
+  let ul=document.getElementById("overdueList");ul.innerHTML="";
+  let now=Date.now();
+  let q=await db.collection("borrows").where("status","==","borrowed").limit(20).get();
+  q.forEach(doc=>{
+    let b=doc.data();
+    // For demo: Flag all borrows >7 days as overdue
+    let time = b.time?.toDate? b.time.toDate().getTime() : 0;
+    if(time && now-time>7*86400000)
+      ul.innerHTML+=`<li>Student ${b.student} — Book ${b.isbn}</li>`;
+  });
+};
+
+/* 6. Fines & Payments */
+window.addFine=async()=>{
+  let s=document.getElementById("fineStudent").value,a=+document.getElementById("fineAmount").value;
+  if(!s||!a)return;
+  await db.collection("fines").add({student:s,amount:a,paid:false});
+  loadFines();
+};
+async function loadFines(){
+  let ul=document.getElementById("fineList");ul.innerHTML="";
+  let q=await db.collection("fines").orderBy("student").limit(15).get();
+  q.forEach(doc=>{let f=doc.data();ul.innerHTML+=`<li>${f.student}: K${f.amount} [${f.paid?"paid":"due"}]</li>`;});
+}loadFines();
+
+/* 7. Reservations */
+window.reserveBook=async()=>{
+  let s=document.getElementById("reservStudent").value,b=document.getElementById("reservBook").value;
+  if(!s||!b)return;
+  await db.collection("reservations").add({student:s,isbn:b,status:"reserved"});
+  loadReservs();
+};
+async function loadReservs(){
+  let ul=document.getElementById("reservList");ul.innerHTML="";
+  let q=await db.collection("reservations").orderBy("student").limit(15).get();
+  q.forEach(doc=>{let r=doc.data();ul.innerHTML+=`<li>${r.student} reserved ${r.isbn}</li>`;});
+}loadReservs();
+
+/* 8. Digital Materials */
+window.addMaterial=async()=>{
+  let file=document.getElementById("uploadMaterial").files[0];
+  if(!file)return;
+  let ref=firebase.storage().ref("materials/"+file.name);
+  await ref.put(file);
+  let url=await ref.getDownloadURL();
+  await db.collection("materials").add({name:file.name,url:url});
+  loadMaterials();
+};
+async function loadMaterials(){
+  let ul=document.getElementById("materialList");ul.innerHTML="";
+  let q=await db.collection("materials").orderBy("name").limit(10).get();
+  q.forEach(doc=>{let m=doc.data();ul.innerHTML+=`<li><a href="${m.url}" target="_blank">${m.name}</a></li>`;});
+}loadMaterials();
+
+/* 9. Manual Barcode */
+window.addManualBarcode=async()=>{
+  let isbn=document.getElementById("barcodeISBN").value;
+  if(!isbn)return;
+  await db.collection("barcodes").add({isbn:isbn,isManual:true});
+  loadBarcodes();
+};
+async function loadBarcodes(){
+  let ul=document.getElementById("barcodeList");ul.innerHTML="";
+  let q=await db.collection("barcodes").orderBy("isbn").limit(10).get();
+  q.forEach(doc=>{let b=doc.data();ul.innerHTML+=`<li>${b.isbn}${b.isManual?" (manual)":""}</li>`;});
+}loadBarcodes();
+
+/* 10. Inventory Summary */
+function inventorySummary(){
+  document.getElementById("inventorySummary").innerText="To implement: total books/borrowed/overdue.";
+}inventorySummary();
+
+/* 11. Usage Analytics */
+setTimeout(()=>{
+  let ctx=document.getElementById("usageChart").getContext("2d");
+  ctx.fillStyle="#1976d2";ctx.fillRect(50,80,-30,-Math.random()*50-7);
+  ctx.fillStyle="#efc920";ctx.fillRect(145,90,-30,-Math.random()*60-8);
+  document.getElementById("usageStats").innerText = "Usage summary: in/out, per hour. (Chart.js for full features)";
+},700);
+
+/* 12. Staff Notifications */
+window.addStaffNotif=async()=>{
+  let m=document.getElementById("staffNotifMsg").value;
+  if(!m)return;
+  await db.collection("staffNotifs").add({msg:m,by:session.uid,time:firebase.firestore.FieldValue.serverTimestamp()});
+  loadStaffNotifs();
+};
+async function loadStaffNotifs(){
+  let ul=document.getElementById("staffNotifList");ul.innerHTML="";
+  let q=await db.collection("staffNotifs").orderBy("time","desc").limit(8).get();
+  q.forEach(doc=>{let n=doc.data();ul.innerHTML+=`<li>${n.by}: ${n.msg}</li>`;});
+}loadStaffNotifs();
+
+/* 13. Student Messaging */
+window.sendStudentMsg=async()=>{
+  let s=document.getElementById("msgStudent").value,m=document.getElementById("msgText").value;
+  if(!s||!m)return;
+  await db.collection("studentMsgs").add({to:s,msg:m,sent:firebase.firestore.FieldValue.serverTimestamp()});
+  loadStudentMsgs();
+};
+async function loadStudentMsgs(){
+  let ul=document.getElementById("msgList");ul.innerHTML="";
+  let q=await db.collection("studentMsgs").orderBy("sent","desc").limit(12).get();
+  q.forEach(doc=>{let ms=doc.data();ul.innerHTML+=`<li>To ${ms.to}: ${ms.msg}</li>`;});
+}loadStudentMsgs();
+
+/* 14. Locker Overview */
+window.lockerOverview=async()=>{
+  let div=document.getElementById("lockerOverview");div.innerHTML="";
+  let q=await db.collection("lockers").orderBy("number","asc").get();
+  let avail=0,total=0;
+  q.forEach(doc=>{
+    let l=doc.data();total++;
+    if(!l.student)avail++;
+  });
+  div.innerHTML=`Total: ${total}, Available: ${avail}`;
+};
+
+/* 15. Library Rules */
+window.saveRules=async()=>{
+  let r=document.getElementById("rulesText").value;
+  await db.collection("libraryRules").doc("main").set({text:r});
+  viewRules();
+};
+async function viewRules(){
+  let doc=await db.collection("libraryRules").doc("main").get();
+  document.getElementById("rulesView").innerText=doc.exists?doc.data().text:"(No rules)";
+}viewRules();
+
+/* 16. Export Reports */
+window.exportLibrary=(type)=>{alert("Full export as "+type.toUpperCase()+": implement using jsPDF or SheetJS/xlsx with data.");};
+
+/* 17. Real-Time Presence */
+window.loadPresence=async()=>{
+  let ul=document.getElementById("presenceList");ul.innerHTML="";
+  let q=await db.collection("sessions").get(); // "sessions" where present in library
+  q.forEach(doc=>{
+    let s=doc.data();ul.innerHTML+=`<li>${s.student} in ${s.station}</li>`;
+  });
+};
+
+/* 18. Staff Duty Roster */
+window.addRoster=async()=>{
+  let s=document.getElementById("rosterStaff").value,d=document.getElementById("rosterDate").value;
+  if(!s||!d)return;
+  await db.collection("libraryRoster").add({staff:s,date:d});
+  loadRoster();
+};
+async function loadRoster(){
+  let ul=document.getElementById("rosterList");ul.innerHTML="";
+  let q=await db.collection("libraryRoster").orderBy("date").limit(10).get();
+  q.forEach(doc=>{let r=doc.data();ul.innerHTML+=`<li>${r.staff} (${r.date})</li>`;});
+}loadRoster();
+
+/* 19. Feedback */
+window.addFeedback=async()=>{
+  let m=document.getElementById("feedbackMsg").value;
+  if(!m)return;
+  await db.collection("libraryFeedback").add({by:session.uid,msg:m,time:firebase.firestore.FieldValue.serverTimestamp()});
+  loadFeedbacks();
+};
+async function loadFeedbacks(){
+  let ul=document.getElementById("feedbackList");ul.innerHTML="";
+  let q=await db.collection("libraryFeedback").orderBy("time","desc").limit(14).get();
+  q.forEach(doc=>{let f=doc.data();ul.innerHTML+=`<li>${f.msg} - ${f.by}</li>`;});
+}loadFeedbacks();
+
+/* 20. Auto Notify Admin */
+window.adminNotify=async()=>{
+  // For total overdues/unpaid check, notify admin if limits exceeded
+  let fines=await db.collection("fines").where("paid","==",false).get();
+  let borrows=await db.collection("borrows").where("status","==","borrowed").get();
+  if(fines.size>5||borrows.size>15){
+    await db.collection("adminAlerts").add({
+      msg:`Overdues: ${borrows.size}, Fines: ${fines.size}`,
+      time:firebase.firestore.FieldValue.serverTimestamp()
+    });
+    document.getElementById("adminNotifStat").innerText="Admin notified!";
+  } else {
+    document.getElementById("adminNotifStat").innerText="Below threshold; no notification sent.";
+  }
+};
+
+</script>
+</body>
+</html>

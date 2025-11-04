@@ -1,0 +1,748 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>KMU Admin Dashboard</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <!-- Firebase SDKs -->
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-storage.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+  <style>
+:root {
+  --primary: #1976d2;
+  --secondary: #fff;
+  --background: #f4f6fa;
+  --shadow: rgba(0,0,0,0.07) 0 3px 12px;
+  --highlight: #d1ecf1;
+  --error: #cc0000;
+  --success: #14863e;
+  --warn: #ffb91d;
+  --fade: .25s cubic-bezier(.49,.41,.58,.74);
+  --font: 'Segoe UI', Arial, sans-serif;
+}
+[data-theme="dark"] {
+  --primary: #009be7;
+  --secondary: #22272e;
+  --background: #13151a;
+  --highlight: #18203a;
+  --shadow: rgba(0,0,0,0.14) 0 4px 13px;
+  --error: #ec4646;
+  --success: #37c978;
+  color: #e7eaf1;
+}
+html,body {
+  font-family: var(--font);
+  background: var(--background);
+  color: #222;
+  min-height: 100vh; margin:0; padding:0;
+}
+[data-theme="dark"] html, [data-theme="dark"] body { color: #e7eaf1;}
+header {
+  display:flex; justify-content:space-between; align-items:center;
+  background: var(--primary);
+  color: var(--secondary);
+  padding:.7em 2vw;
+  box-shadow:var(--shadow);
+}
+.kmu-logo {height: 46px; margin-right:1.1em;vertical-align:middle;}
+.kmu-title { font-size:1.52em;font-weight: 700;letter-spacing:1px;}
+.header-actions {display:flex;align-items:center;gap:1.2em;}
+#themeToggle { border:none;background:none;font-size:1.2em;cursor:pointer;color:var(--secondary);}
+.sys-health {
+  font-weight: 500;
+  padding: .25em 1em;
+  border-radius: 2em;
+  background: rgba(255,255,255,0.12);
+}
+.sys-health.online {color:var(--success);}
+.sys-health.offline {color:var(--error);}
+main {
+  min-height: 85vh; padding: 0 1vw; margin-top:2em;
+  display: flex;
+  flex-direction: column;
+  row-gap: 1.5em;
+  align-items: stretch;
+}
+.dashboard-menu {
+  margin-bottom: 0.9em;
+  display:flex;justify-content:space-between;align-items:center;
+}
+.dropdown-menu {
+  position:relative;display:inline-block;
+}
+.dropdown-menu button {
+  background:none;border:none;
+  color: var(--primary);font-size:1.13em;font-weight:550;
+  cursor:pointer;padding: .3em 1.1em .3em .2em;
+}
+.menu-content {
+  display: none;
+  position:absolute;z-index:99;
+  right:.2em;top:110%;
+  background:var(--secondary);
+  box-shadow:var(--shadow);
+  padding:.7em 0;min-width:220px;
+  border-radius:6px;
+}
+.menu-content.show {display:block;}
+.menu-content a {
+  color: #1a304a; text-decoration: none;padding:.59em 1.16em;display:block;font-weight:500;
+}
+.menu-content a:hover {background:var(--highlight);}
+@media(max-width:500px){.menu-content{min-width:140px}}
+
+#dashboardTabs {
+  display: flex;gap:.14em;flex-wrap:wrap;background:var(--highlight);
+  border-radius: 0.4em;
+  box-shadow: var(--shadow);
+  justify-content: flex-start;
+}
+.tab-btn {
+  border:none;
+  background:none;
+  font-size:1.065em;
+  padding:.78em 1.25em;
+  cursor:pointer;
+  transition:background .16s, color .14s;
+  color:var(--primary);
+  font-weight:550;
+  border-radius:7px 7px 0 0;
+}
+.tab-btn.active {
+  background:var(--primary);
+  color:var(--secondary);
+}
+.tab-btn:focus {outline:2px solid var(--primary);}
+.dashboard-section {
+  background:var(--secondary);
+  border-radius:0 0 8px 8px;
+  box-shadow:var(--shadow);
+  padding:1.1em 1.6em 2em 1.6em;
+  margin-top:0.2em;
+  display:none;
+  animation:fadeIn .42s;
+}
+.dashboard-section.active {display:block;}
+@keyframes fadeIn {from{opacity:0;transform:translateY(19px);}to{opacity:1;transform:translateY(0);}}
+h2 {margin:0 0 .6em;}
+h3 {margin-top:.8em;margin-bottom:.32em;}
+label{font-weight:500;}
+
+.btn {
+  border: none;
+  background: var(--primary);
+  color: var(--secondary);
+  border-radius: 4px;
+  font-size: 1.04em;
+  padding: .56em 1.4em;
+  cursor: pointer;
+  margin: .13em .5em .13em 0;
+  font-weight: 500;
+  box-shadow: rgba(0,0,0,0.04) 0 2px 8px;
+  transition:background .18s,color .16s;
+}
+.btn:active {background: #1364a5;}
+input[type="text"],input[type="email"],input[type="number"],input[type="password"],textarea,select {
+  border:1px solid #b2c7d9;border-radius:3.8px;
+  padding:.64em;width:99%;
+  margin:.13em 0 .8em 0; box-sizing:border-box;
+}
+input:focus,textarea:focus,select:focus {border-color:var(--primary);}
+table {
+  width: 98%;border-collapse:collapse;margin:1em 0;
+  font-size: 1em;
+}
+td,th {border-bottom:1px solid #e2e7ed;padding:.52em .44em;}
+tr:nth-child(even){background:var(--highlight);}
+th {text-align:left;background:var(--background);}
+@media(max-width:716px){main{padding:0}.dashboard-section{padding:0.6em 0.4em}}
+footer {
+  background: var(--highlight);
+  color: #344a5b;
+  padding: .92em 2vw;
+  text-align: center;
+  font-size: .99em;
+}
+.terms {margin: 0;}
+  </style>
+</head>
+<body data-theme="light">
+  <header>
+    <img src="kmu-logo.png" alt="KMU Logo" class="kmu-logo">
+    <span class="kmu-title">KMU Central Admin Dashboard</span>
+    <div class="header-actions">
+      <button id="themeToggle" title="Switch Theme">🌙</button>
+      <span id="sysHealth" class="sys-health">System Health: Checking…</span>
+    </div>
+  </header>
+
+  <main>
+
+    <div class="dashboard-menu">
+      <span>Welcome, <b id="userEmail"></b></span>
+      <div class="dropdown-menu">
+        <button id="menuDropBtn">☰ Menu ▼</button>
+        <div class="menu-content" id="menuDropContent">
+          <a href="#" id="profileView">Profile & Security</a>
+          <a href="#" id="changeTheme">Toggle Theme</a>
+          <a href="#" id="logoutBtn">Logout</a>
+        </div>
+      </div>
+    </div>
+
+    <nav id="dashboardTabs" aria-label="Admin dashboard features">
+      <button class="tab-btn active" data-tab="user-mgmt">User Management</button>
+      <button class="tab-btn" data-tab="student-records">Student Records</button>
+      <button class="tab-btn" data-tab="stations">Station Setup</button>
+      <button class="tab-btn" data-tab="lockers">Locker Setup</button>
+      <button class="tab-btn" data-tab="permissions">Role Permissions</button>
+      <button class="tab-btn" data-tab="health">Health Monitor</button>
+      <button class="tab-btn" data-tab="announcements">Announcements</button>
+      <button class="tab-btn" data-tab="audit-logs">Audit Logs</button>
+      <button class="tab-btn" data-tab="backup">Data Backup</button>
+      <button class="tab-btn" data-tab="sessions">Session Key Ctrl</button>
+      <button class="tab-btn" data-tab="analytics">Analytics</button>
+      <button class="tab-btn" data-tab="notifications">Notifications</button>
+      <button class="tab-btn" data-tab="branding">Theme & Branding</button>
+      <button class="tab-btn" data-tab="security">Security Center</button>
+      <button class="tab-btn" data-tab="reports">Reports</button>
+      <button class="tab-btn" data-tab="maintenance">Maintenance</button>
+      <button class="tab-btn" data-tab="attendance">Attendance</button>
+      <button class="tab-btn" data-tab="broadcasts">Notification History</button>
+      <button class="tab-btn" data-tab="integration">Integration Monitor</button>
+      <button class="tab-btn" data-tab="settings">Settings</button>
+    </nav>
+
+    <!-- SECTION TEMPLATES: Full 20 Features -->
+    <!-- 1. User Management -->
+    <section class="dashboard-section active" id="tab-user-mgmt">
+      <h2>User Management</h2>
+      <div>
+        <label>Add User:
+          <select id="newUserRole">
+            <option value="admins">Admin</option>
+            <option value="supervisors">Supervisor</option>
+            <option value="clinicStaff">Clinic Staff</option>
+            <option value="librarians">Librarian</option>
+          </select>
+        </label>
+        <input type="email" id="newUserEmail" placeholder="email@kmu.edu" />
+        <input type="password" id="newUserPwd" placeholder="Initial password" />
+        <button class="btn" onclick="addUser()">Add User</button>
+      </div>
+      <h3>All Users</h3>
+      <table id="usersTable">
+        <thead>
+          <tr>
+            <th>Email</th><th>Role</th><th>Status</th><th>Actions</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </section>
+    <!-- 2. Student Records -->
+    <section class="dashboard-section" id="tab-student-records">
+      <h2>Student Records Control</h2>
+      <input type="file" id="studentCSVUpload" accept=".csv" />
+      <button class="btn" onclick="importStudents()">Import Students (CSV)</button>
+      <button class="btn" onclick="exportStudents()">Export Students (CSV)</button>
+      <div>
+        <h3>Student List</h3>
+        <table id="studentsTable">
+          <thead>
+            <tr><th>ID</th><th>Name</th><th>Email</th><th>Assigned Station</th><th>Actions</th></tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <button class="btn" onclick="refreshStudents()">Refresh List</button>
+    </section>
+    <!-- 3. Station Setup -->
+    <section class="dashboard-section" id="tab-stations">
+      <h2>Station Setup Manager</h2>
+      <input type="text" id="stationName" placeholder="Station Name" />
+      <button class="btn" onclick="addStation()">Add Station</button>
+      <div>
+        <h3>Stations</h3>
+        <table id="stationTable"><thead><tr><th>Name</th><th>Status</th><th>Maintenance</th><th>Actions</th></tr></thead><tbody></tbody></table>
+      </div>
+    </section>
+    <!-- 4. Locker Setup -->
+    <section class="dashboard-section" id="tab-lockers">
+      <h2>Library Locker Setup</h2>
+      <input type="number" id="lockerNum" placeholder="Locker Number"/>
+      <button class="btn" onclick="addLocker()">Add Locker</button>
+      <div>
+        <h3>Lockers</h3>
+        <table id="lockerTable"><thead><tr><th>#</th><th>Status</th><th>Student</th><th>Actions</th></tr></thead><tbody></tbody></table>
+      </div>
+    </section>
+    <!-- 5. Role Permissions -->
+    <section class="dashboard-section" id="tab-permissions">
+      <h2>Role-Based Permissions</h2>
+      <div>
+        <p>Set feature access for each role:</p>
+        <table id="permissionsTable"><thead><tr><th>Role</th><th>View</th><th>Modify</th></tr></thead><tbody></tbody></table>
+        <button class="btn" onclick="savePermissions()">Save Permissions</button>
+      </div>
+    </section>
+    <!-- 6. System Health -->
+    <section class="dashboard-section" id="tab-health">
+      <h2>System Health Monitor</h2>
+      <div>
+        <p>Uptime: <span id="uptimeVal">-</span></p>
+        <p>Online Users: <span id="onlineUsersVal">-</span></p>
+        <p>Firebase Connection: <span id="firebaseStatus">Checking…</span></p>
+      </div>
+    </section>
+    <!-- 7. Announcements -->
+    <section class="dashboard-section" id="tab-announcements">
+      <h2>Announcements Board</h2>
+      <input type="text" id="announceTitle" placeholder="Title">
+      <textarea id="announceMsg" placeholder="Message…"></textarea>
+      <select id="announceTarget">
+        <option value="everyone">All</option>
+        <option value="supervisors">Supervisors</option>
+        <option value="clinicStaff">Clinic</option>
+        <option value="librarians">Library</option>
+      </select>
+      <button class="btn" onclick="sendAnnouncement()">Send Announcement</button>
+      <div>
+        <h3>Past Announcements</h3>
+        <ul id="announcementList"></ul>
+      </div>
+    </section>
+    <!-- 8. Audit Logs -->
+    <section class="dashboard-section" id="tab-audit-logs">
+      <h2>Audit Logs & Activity Tracking</h2>
+      <input type="date" id="auditDate">
+      <button class="btn" onclick="loadAuditLogs()">Load Logs</button>
+      <div>
+        <h3>Logs</h3>
+        <table id="auditTable"><thead><tr><th>Time</th><th>User</th><th>Action</th></tr></thead><tbody></tbody></table>
+      </div>
+    </section>
+    <!-- 9. Data Backup -->
+    <section class="dashboard-section" id="tab-backup">
+      <h2>Data Backup Manager</h2>
+      <button class="btn" onclick="backupData('csv')">Export as CSV</button>
+      <button class="btn" onclick="backupData('json')">Export as JSON</button>
+      <button class="btn" onclick="scheduleBackup()">Schedule Cloud Backup</button>
+      <div id="backupStatus"></div>
+    </section>
+    <!-- 10. Session Key Ctrl -->
+    <section class="dashboard-section" id="tab-sessions">
+      <h2>Session Key Control</h2>
+      <div>
+        <h3>Active Sessions</h3>
+        <table id="sessionTable"><thead><tr><th>Station</th><th>User</th><th>Key</th><th>Expires</th><th>Action</th></tr></thead><tbody></tbody></table>
+      </div>
+      <button class="btn" onclick="revokeAllSessions()">Revoke All Keys</button>
+    </section>
+    <!-- 11. Analytics -->
+    <section class="dashboard-section" id="tab-analytics">
+      <h2>Analytics Dashboard</h2>
+      <div>
+        <canvas id="analyticsChart" width="320" height="121"></canvas>
+        <div id="analyticsStats"></div>
+      </div>
+    </section>
+    <!-- 12. Notification Control -->
+    <section class="dashboard-section" id="tab-notifications">
+      <h2>Notification Control</h2>
+      <input type="text" id="notifyUser" placeholder="User email or ID">
+      <textarea id="notifyMsg" placeholder="Message"></textarea>
+      <button class="btn" onclick="sendNotification()">Send Notification</button>
+      <div id="notificationStatus"></div>
+    </section>
+    <!-- 13. Theme & Branding -->
+    <section class="dashboard-section" id="tab-branding">
+      <h2>Theme & Branding Settings</h2>
+      <input type="file" id="newLogo" accept="image/*" />
+      <button class="btn" onclick="updateLogo()">Change Logo</button>
+      <select id="themeSelect">
+        <option value="light">Light Mode</option>
+        <option value="dark">Dark Mode</option>
+      </select>
+      <button class="btn" onclick="setTheme()">Apply Theme</button>
+      <input type="color" id="colorPick">
+      <button class="btn" onclick="changePrimaryColor()">Set Primary Color</button>
+    </section>
+    <!-- 14. Security Center -->
+    <section class="dashboard-section" id="tab-security">
+      <h2>Security Center</h2>
+      <button class="btn" onclick="forceLogoutAll()">Force Logout All</button>
+      <button class="btn" onclick="detectDuplicates()">Detect Duplicate Logins</button>
+      <button class="btn" onclick="monitorSuspicious()">Monitor Suspicious Activity</button>
+      <div id="securityStatus"></div>
+    </section>
+    <!-- 15. Reports -->
+    <section class="dashboard-section" id="tab-reports">
+      <h2>Reports Generator</h2>
+      <select id="reportsType">
+        <option value="weekly">Weekly</option>
+        <option value="monthly">Monthly</option>
+      </select>
+      <button class="btn" onclick="generateReport('pdf')">Export PDF</button>
+      <button class="btn" onclick="generateReport('word')">Export Word</button>
+    </section>
+    <!-- 16. Maintenance Manager -->
+    <section class="dashboard-section" id="tab-maintenance">
+      <h2>Maintenance Manager</h2>
+      <input type="date" id="maintDate">
+      <input type="text" id="maintItem" placeholder="Workstation or Locker">
+      <button class="btn" onclick="scheduleMaintenance()">Schedule</button>
+      <div id="maintenanceStatus"></div>
+      <h3>Schedule List</h3>
+      <ul id="maintList"></ul>
+    </section>
+    <!-- 17. Attendance -->
+    <section class="dashboard-section" id="tab-attendance">
+      <h2>User Attendance Summary</h2>
+      <button class="btn" onclick="loadAttendance()">Refresh Summary</button>
+      <table id="attendanceTable"><thead><tr><th>User</th><th>Role</th><th>Login Count</th><th>Hours</th></tr></thead><tbody></tbody></table>
+    </section>
+    <!-- 18. Notification Broadcasts -->
+    <section class="dashboard-section" id="tab-broadcasts">
+      <h2>Notification Broadcast History</h2>
+      <button class="btn" onclick="loadBroadcasts()">Refresh List</button>
+      <ul id="broadcastList"></ul>
+    </section>
+    <!-- 19. Integration Monitor -->
+    <section class="dashboard-section" id="tab-integration">
+      <h2>Library & Clinic Integration Monitor</h2>
+      <div>
+        <p>Book Circulation/Library Traffic:</p>
+        <div id="libraryStats"></div>
+        <p>Clinic Visits Overview:</p>
+        <div id="clinicVisits"></div>
+      </div>
+    </section>
+    <!-- 20. System Settings -->
+    <section class="dashboard-section" id="tab-settings">
+      <h2>System Settings Control Panel</h2>
+      <select id="emailTemplate">
+        <option value="default">Default</option>
+        <option value="announcement">Announcement</option>
+      </select>
+      <input type="text" id="notifTone" placeholder="Notification Sound URL/Sample"/>
+      <input type="text" id="timeZone" placeholder="Time Zone"/>
+      <button class="btn" onclick="saveSettings()">Save Settings</button>
+      <div id="settingsStatus"></div>
+    </section>
+  </main>
+  <footer>
+    <p class="terms">KMU Central &copy; 2025. Dashboard for Administrators only. Unauthorized access prohibited.</p>
+  </footer>
+
+<script>
+/** 1. FIREBASE CONFIG: PUT YOUR OWN CONFIG BELOW */
+const firebaseConfig = {
+  apiKey: "AIzaSyDrjo_HDQ1RRkjA-zXgZtuFovI7zg2yma0",
+  authDomain: "kmu-digita-rsc-mnt-system.firebaseapp.com",
+  databaseURL: "https://kmu-digita-rsc-mnt-system-default-rtdb.firebaseio.com",
+  projectId: "kmu-digita-rsc-mnt-system",
+  storageBucket: "kmu-digita-rsc-mnt-system.firebasestorage.app",
+  messagingSenderId: "908284620214",
+  appId: "1:908284620214:web:e76e9a4757c162eea1a517",
+  measurementId: "G-JEPQ1YMVNE"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+const auth = firebase.auth();
+const rtdb = firebase.database();
+
+/** 2. SESSION CHECK (BLOCK IF NOT LOGGED IN AS ADMIN) */
+const session =
+  JSON.parse(sessionStorage.getItem("kmu_session") || "null");
+if (!session || session.role !== "admin") {
+  alert("You must login as Admin!"); window.location = "index.html";
+}
+
+/** 3. HEADER: User info, theme, sys health */
+let userRef = null;
+document.getElementById("userEmail").innerText =
+  (auth.currentUser && auth.currentUser.email) || session.email || "...";
+
+/** THEME TOGGLE & SET */
+function applyTheme(theme) {
+  document.body.dataset.theme = theme || "light";
+  document.getElementById("themeToggle").textContent =
+    theme === "dark" ? "☀️" : "🌙";
+}
+applyTheme(localStorage.getItem("dashboard-theme") || "light");
+document.getElementById("themeToggle").onclick = () => {
+  let cur = document.body.dataset.theme;
+  let next = cur === "dark" ? "light" : "dark";
+  applyTheme(next); localStorage.setItem("dashboard-theme", next);
+};
+document.getElementById("changeTheme").onclick = () => {
+  document.getElementById("themeToggle").click();
+};
+/** System health indicator with Firebase connection */
+let sysHealth = document.getElementById("sysHealth");
+rtdb.ref(".info/connected").on("value", snap=>{
+  let s = snap.val()? "Online" : "Offline";
+  sysHealth.textContent="System Health: "+s;
+  sysHealth.className = "sys-health "+(s==="Online"?"online":"offline");
+  document.getElementById("firebaseStatus").textContent=s;
+});
+
+/** 4. MENU HANDLING */
+document.getElementById("menuDropBtn").onclick = function(){
+  document.getElementById("menuDropContent").classList.toggle("show");
+};
+window.onclick = function(event) {
+  if(!event.target.matches("#menuDropBtn")) {
+    document.getElementById("menuDropContent").classList.remove("show");
+  }
+};
+/** Logout btn */
+document.getElementById("logoutBtn").onclick = ()=>{
+  sessionStorage.removeItem("kmu_session");
+  auth.signOut().then(()=>{window.location="index.html";});
+};
+
+/** 5. TABS & SECTIONS */
+const tabBtns = document.querySelectorAll(".tab-btn");
+tabBtns.forEach(btn=>{
+  btn.onclick=()=>{
+    tabBtns.forEach(b=>b.classList.remove("active"));
+    document.querySelectorAll(".dashboard-section").forEach(s=>s.classList.remove("active"));
+    btn.classList.add("active");
+    document.getElementById("tab-"+btn.dataset.tab).classList.add("active");
+  }
+});
+
+/* ---- === ADMIN FEATURES IMPLEMENTATION === ---- */
+/* (Some features simplified for brevity but all must be present; expand as needed) */
+
+window.addUser = async function(){
+  let email = document.getElementById("newUserEmail").value.trim();
+  let pwd = document.getElementById("newUserPwd").value.trim();
+  let role = document.getElementById("newUserRole").value;
+  if(!/^[^@]+@[^@]+\.[^@]+$/.test(email) || pwd.length<6) return alert("Check email/password");
+  // Add user with password (firebase cloud function recommended, here direct for demo)
+  try {
+    // Option 1: Using firebase createUserWithEmailAndPassword (requires current user to be signed in and email verified as admin)
+    let user = await auth.createUserWithEmailAndPassword(email, pwd);
+    let uid = user.user.uid;
+    await db.collection(role).doc(uid).set({email,status:"active",role});
+    alert("User created! Remember to verify email.");
+    refreshUsers();
+  } catch(err){
+    alert(err.message);
+  }
+}
+async function refreshUsers(){
+  const tb = document.querySelector("#usersTable tbody");
+  tb.innerHTML = "";
+  ["admins","supervisors","clinicStaff","librarians"].forEach(async col=>{
+    let q = await db.collection(col).get();
+    q.forEach(doc=>{
+      let u = doc.data();
+      let tr = document.createElement("tr");
+      tr.innerHTML = `<td>${u.email||""}</td><td>${col}</td>
+        <td>${u.status||"active"}</td>
+        <td>
+          <button class="btn" onclick="blockUser('${col}','${doc.id}')">Block</button>
+          <button class="btn" onclick="deleteUser('${col}','${doc.id}')">Del</button>
+        </td>`;
+      tb.appendChild(tr);
+    });
+  });
+}
+window.blockUser = async function(col,uid) {
+  await db.collection(col).doc(uid).update({status:"blocked"});
+  alert("Blocked."); refreshUsers();
+};
+window.deleteUser = async function(col,uid){
+  await db.collection(col).doc(uid).delete(); alert("Deleted."); refreshUsers();
+};
+
+/* Student Records Control */
+window.importStudents=async function(){alert("CSV import: implement with PapaParse or csv-parse and Firestore batch add.");};
+window.exportStudents=async function(){alert("CSV Export: implement with Firestore get and download.");};
+window.refreshStudents=async function(){
+  let tb = document.querySelector("#studentsTable tbody");tb.innerHTML="";
+  let q=await db.collection("students").limit(50).get();
+  q.forEach(doc=>{
+    let s=doc.data();
+    let tr = document.createElement("tr");
+    tr.innerHTML = `<td>${doc.id}</td><td>${s.name||"-"}</td><td>${s.email||"-"}</td>
+    <td>${s.station||""}</td>
+    <td><button class="btn" onclick="editStudent('${doc.id}')">Edit</button></td>`;
+    tb.appendChild(tr);
+  });
+};window.refreshStudents();
+
+/* Station Setup */
+window.addStation=async function(){
+  let n=document.getElementById("stationName").value.trim();
+  if(!n) return;
+  await db.collection("stations").add({name:n,status:"active"});
+  alert("Station added."); refreshStations();
+};
+async function refreshStations(){
+  let tb=document.querySelector("#stationTable tbody");tb.innerHTML="";
+  let q=await db.collection("stations").get();
+  q.forEach(doc=>{
+    let s=doc.data();
+    let tr=document.createElement("tr");
+    tr.innerHTML=`<td>${s.name||"-"}</td><td>${s.status||"-"}</td>
+    <td>${s.maintenance||"-"}</td>
+    <td><button class="btn" onclick="editStation('${doc.id}')">Edit</button></td>`;
+    tb.appendChild(tr);
+  });
+}window.refreshStations=refreshStations;refreshStations();
+
+/* Locker Setup */
+window.addLocker=async function(){
+  let n=+document.getElementById("lockerNum").value.trim();
+  if(!n)return;
+  await db.collection("lockers").add({number:n,status:"unassigned"});
+  alert("Locker added.");refreshLockers();
+};
+async function refreshLockers(){
+  let tb=document.querySelector("#lockerTable tbody");tb.innerHTML="";
+  let q=await db.collection("lockers").limit(50).get();
+  q.forEach(doc=>{
+    let l=doc.data();
+    tb.innerHTML+=`<tr><td>${l.number||"-"}</td>
+    <td>${l.status||"-"}</td>
+    <td>${l.student||"-"}</td>
+    <td><button class="btn" onclick="assignLocker('${doc.id}')">Assign</button></td></tr>`;
+  });
+}window.refreshLockers=refreshLockers;refreshLockers();
+
+/* Permissions Table */
+async function loadPermissions(){
+  // Here you could get settings from Firestore. We'll demo with static table.
+  const roles=["admins","supervisors","clinicStaff","librarians"];
+  let tb=document.querySelector("#permissionsTable tbody");
+  tb.innerHTML="";
+  roles.forEach(r=>{
+    tb.innerHTML+=`<tr>
+      <td>${r}</td>
+      <td><input type="checkbox" checked /></td>
+      <td><input type="checkbox" /></td>
+    </tr>`;
+  });
+}
+window.savePermissions=()=>{alert("Permissions saved! (TODO: save to Firestore)")};
+loadPermissions();
+
+/* Health Monitor */
+function updateUptime(){document.getElementById("uptimeVal").textContent=(Math.floor(performance.now()/1000/60))+" min";}
+updateUptime();setInterval(updateUptime,60000);
+/* Online users: Could be implemented by writing signed-in users to Realtime Database. Example placeholder: */
+function loadOnlineUsers(){
+  // In production use, populate with the list from rtdb or a Firestore 'userSessions' collection
+  document.getElementById("onlineUsersVal").textContent="Demo: 2";
+}
+loadOnlineUsers();
+
+/* Announcements */
+window.sendAnnouncement=async function(){
+  let t=document.getElementById("announceTitle").value;
+  let m=document.getElementById("announceMsg").value;
+  let tgt=document.getElementById("announceTarget").value;
+  await db.collection("announcements").add({
+    title:t,message:m,target:tgt,by:session.uid,time:firebase.firestore.FieldValue.serverTimestamp()
+  });alert("Sent!");loadAnnouncements();
+};
+async function loadAnnouncements(){
+  let l=document.getElementById("announcementList");l.innerHTML="";
+  let q=await db.collection("announcements").orderBy("time","desc").limit(10).get();
+  q.forEach(doc=>{
+    let a=doc.data();
+    let li=document.createElement("li");
+    li.innerHTML=`<b>${a.title||"-"}</b> - ${a.message||""} <i style="color:#959">${a.target}</i>`;
+    l.appendChild(li);
+  });
+}loadAnnouncements();
+
+/* Audit logs */
+window.loadAuditLogs=async function(){
+  let tb=document.querySelector("#auditTable tbody");tb.innerHTML="";
+  let q=await db.collection("systemLogs").orderBy("time","desc").limit(30).get();
+  q.forEach(doc=>{
+    let log=doc.data();
+    let row=document.createElement("tr");
+    let t=log.time?log.time.toDate().toLocaleString():"-";
+    row.innerHTML=`<td>${t}</td><td>${log.email||"-"}</td><td>${log.outcome||"-"}</td>`;
+    tb.appendChild(row);
+  });
+};
+
+/* Backup */
+window.backupData=function(fmt){alert("Export feature: To implement, iterate each collection and save as CSV/JSON.");}
+window.scheduleBackup=()=>{alert("Cloud backup scheduling is a backend process (use Firebase Functions+Storage).");}
+
+/* Session Key Ctrl */
+async function loadSessions(){
+  let tb=document.querySelector("#sessionTable tbody");tb.innerHTML="";
+  let q=await db.collection("sessions").limit(30).get();
+  q.forEach(doc=>{
+    let s=doc.data();
+    tb.innerHTML+=`<tr><td>${s.station||"-"}</td><td>${s.user||"-"}</td>
+    <td>${s.key||"-"}</td><td>${s.expires||"-"}</td>
+    <td><button class="btn" onclick="revokeSession('${doc.id}')">Revoke</button></td></tr>`;
+  });
+}
+window.revokeAllSessions=()=>{alert("To implement: batch update Firestore sessions as revoked.");}
+window.revokeSession=(id)=>{alert("To implement: Remove or mark expired session by ID in Firestore.");}
+loadSessions();
+
+/* Analytics: Demo chart (use chart.js in production) */
+const ctx = document.getElementById("analyticsChart").getContext("2d");
+ctx.fillStyle="#1976d2";ctx.fillRect(50,Math.random()*52+24,50,70);ctx.fillRect(120,54,50,70);
+document.getElementById("analyticsStats").textContent="Usage, stations, checkins, traffic (implement Chart.js for real analytics)";
+
+/* Notification Control */
+window.sendNotification=()=>{alert("Use Firestore collection 'notifications'. Set cross-role delivery as needed.");}
+
+/* Branding/Theme settings */
+window.updateLogo=()=>{alert("Logo upload can be handled with Firebase Storage.");};
+window.setTheme=()=>{applyTheme(document.getElementById("themeSelect").value)};
+window.changePrimaryColor=()=>{alert("To implement: CSS variable update, save in Firestore for org-wide sync.");};
+
+/* Security Center */
+window.forceLogoutAll=()=>{alert("To implement: Set all user status to signed out in Firestore or invalidate sessions.");};
+window.detectDuplicates=()=>{alert("To implement: Query multiple login sessions in Firestore,userPresence.");};
+window.monitorSuspicious=()=>{alert("To implement: Audit session logs for anomalies.");};
+
+/* Reports */
+window.generateReport=(type)=>{alert("To implement: Compose report in PDF/Word, use a library like jsPDF or server-side gen.");};
+
+/* Maintenance */
+window.scheduleMaintenance=()=>{alert("To implement: Add schedule to Firestore and display in UI.");};
+
+/* Attendance */
+window.loadAttendance=()=>{
+  document.querySelector("#attendanceTable tbody").innerHTML="<tr><td>staff@email</td><td>clinic</td><td>3</td><td>14h</td></tr>";
+};
+
+/* Broadcast history */
+window.loadBroadcasts=()=>{
+  document.getElementById("broadcastList").innerHTML="<li>(Implement: Past notifications from Firestore/announcements)</li>";
+};
+
+/* Integration Monitor */
+document.getElementById("libraryStats").innerText="(To implement: books in/out/traffic from Firestore)";
+document.getElementById("clinicVisits").innerText="(To implement: clinic visit data from Firestore)";
+
+/* Settings */
+window.saveSettings=()=>{alert("To implement: Save email templates, tone, time zone in Firestore.");};
+
+/* Utility for possible edit, assign, etc.: implement according to role/data needs */
+window.editStudent=id=>{alert("To implement: popup or form to edit student "+id);};
+window.editStation=id=>{alert("To implement: popup to edit station "+id);}
+window.assignLocker=id=>{alert("To implement: Assign student to locker "+id);};
+
+</script>
+</body>
+</html>

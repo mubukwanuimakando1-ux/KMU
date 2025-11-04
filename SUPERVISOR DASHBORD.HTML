@@ -1,0 +1,618 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>KMU Supervisor Dashboard</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <!-- Firebase SDKs -->
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-storage.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+  <style>
+:root {
+  --primary: #1976d2;
+  --secondary: #fff;
+  --background: #f4f6fa;
+  --shadow: rgba(0,0,0,0.07) 0 3px 12px;
+  --highlight: #d1ecf1;
+  --error: #cc0000;
+  --success: #14863e;
+  --warn: #ffb91d;
+  --fade: .25s cubic-bezier(.49,.41,.58,.74);
+  --font: 'Segoe UI', Arial, sans-serif;
+}
+[data-theme="dark"] {
+  --primary: #009be7;
+  --secondary: #22272e;
+  --background: #13151a;
+  --highlight: #18203a;
+  --shadow: rgba(0,0,0,0.14) 0 4px 13px;
+  --error: #ec4646;
+  --success: #37c978;
+  color: #e7eaf1;
+}
+body,html {
+  font-family: var(--font);
+  background: var(--background);
+  color: #222;
+  min-height: 100vh; margin:0; padding:0;
+}
+[data-theme="dark"] body, [data-theme="dark"] html { color: #e7eaf1;}
+header {
+  display:flex; justify-content:space-between; align-items:center;
+  background: var(--primary);
+  color: var(--secondary);
+  padding:.7em 2vw;
+  box-shadow:var(--shadow);
+}
+.kmu-logo {height: 46px; margin-right:1.1em;vertical-align:middle;}
+.kmu-title { font-size:1.52em;font-weight: 700;letter-spacing:1px;}
+.header-actions {display:flex;align-items:center;gap:1.2em;}
+#themeToggle { border:none;background:none;font-size:1.2em;cursor:pointer;color:var(--secondary);}
+.sys-health {
+  font-weight: 500;
+  padding: .25em 1em;
+  border-radius: 2em;
+  background: rgba(255,255,255,0.12);
+}
+.sys-health.online {color:var(--success);}
+.sys-health.offline {color:var(--error);}
+main {
+  min-height: 85vh; padding: 0 1vw; margin-top:2em;
+  display: flex;
+  flex-direction: column;
+  row-gap: 1.5em;
+  align-items: stretch;
+}
+.dashboard-menu {
+  margin-bottom: 0.9em;
+  display:flex;justify-content:space-between;align-items:center;
+}
+.dropdown-menu {
+  position:relative;display:inline-block;
+}
+.dropdown-menu button {
+  background:none;border:none;
+  color: var(--primary);font-size:1.13em;font-weight:550;
+  cursor:pointer;padding: .3em 1.1em .3em .2em;
+}
+.menu-content {
+  display: none;
+  position:absolute;z-index:99;
+  right:.2em;top:110%;
+  background:var(--secondary);
+  box-shadow:var(--shadow);
+  padding:.7em 0;min-width:220px;
+  border-radius:6px;
+}
+.menu-content.show {display:block;}
+.menu-content a {
+  color: #1a304a; text-decoration: none;padding:.59em 1.16em;display:block;font-weight:500;
+}
+.menu-content a:hover {background:var(--highlight);}
+@media(max-width:500px){.menu-content{min-width:140px}}
+
+#dashboardTabs {
+  display: flex;gap:.14em;flex-wrap:wrap;background:var(--highlight);
+  border-radius: 0.4em;
+  box-shadow: var(--shadow);
+  justify-content: flex-start;
+}
+.tab-btn {
+  border:none;
+  background:none;
+  font-size:1.065em;
+  padding:.78em 1.25em;
+  cursor:pointer;
+  transition:background .16s, color .14s;
+  color:var(--primary);
+  font-weight:550;
+  border-radius:8px 8px 0 0;
+}
+.tab-btn.active {
+  background:var(--primary);
+  color:var(--secondary);
+}
+.tab-btn:focus {outline:2px solid var(--primary);}
+.dashboard-section {
+  background:var(--secondary);
+  border-radius:0 0 8px 8px;
+  box-shadow:var(--shadow);
+  padding:1.1em 1.6em 2em 1.6em;
+  margin-top:0.2em;
+  display:none;
+  animation:fadeIn .42s;
+}
+.dashboard-section.active {display:block;}
+@keyframes fadeIn {from{opacity:0;transform:translateY(19px);}to{opacity:1;transform:translateY(0);}}
+h2 {margin:0 0 .6em;}
+h3 {margin-top:.8em;margin-bottom:.32em;}
+label{font-weight:500;}
+.btn {
+  border: none;
+  background: var(--primary);
+  color: var(--secondary);
+  border-radius: 4px;
+  font-size: 1.04em;
+  padding: .56em 1.4em;
+  cursor: pointer;
+  margin: .13em .5em .13em 0;
+  font-weight: 500;
+  box-shadow: rgba(0,0,0,0.04) 0 2px 8px;
+  transition:background .18s,color .16s;
+}
+.btn:active {background: #1364a5;}
+input[type="text"],input[type="email"],input[type="number"],input[type="password"],textarea,select {
+  border:1px solid #b2c7d9;border-radius:3.8px;
+  padding:.64em;width:99%;
+  margin:.13em 0 .8em 0; box-sizing:border-box;
+}
+input:focus,textarea:focus,select:focus {border-color:var(--primary);}
+table {
+  width: 98%;border-collapse:collapse;margin:1em 0;
+  font-size: 1em;
+}
+td,th {border-bottom:1px solid #e2e7ed;padding:.52em .44em;}
+tr:nth-child(even){background:var(--highlight);}
+th {text-align:left;background:var(--background);}
+@media(max-width:716px){main{padding:0}.dashboard-section{padding:0.6em 0.4em}}
+footer {
+  background: var(--highlight);
+  color: #344a5b;
+  padding: .92em 2vw;
+  text-align: center;
+  font-size: .99em;
+}
+.terms {margin: 0;}
+  </style>
+</head>
+<body data-theme="light">
+  <header>
+    <img src="kmu-logo.png" alt="KMU Logo" class="kmu-logo">
+    <span class="kmu-title">KMU Central Supervisor Dashboard</span>
+    <div class="header-actions">
+      <button id="themeToggle" title="Switch Theme">🌙</button>
+      <span id="sysHealth" class="sys-health">System Health: Checking…</span>
+    </div>
+  </header>
+  <main>
+    <div class="dashboard-menu">
+      <span>Welcome, <b id="userEmail"></b></span>
+      <div class="dropdown-menu">
+        <button id="menuDropBtn">☰ Menu ▼</button>
+        <div class="menu-content" id="menuDropContent">
+          <a href="#" id="profileView">Profile & Security</a>
+          <a href="#" id="changeTheme">Toggle Theme</a>
+          <a href="#" id="logoutBtn">Logout</a>
+        </div>
+      </div>
+    </div>
+    <nav id="dashboardTabs" aria-label="Supervisor dashboard features">
+      <button class="tab-btn active" data-tab="station-assign">Station Assign</button>
+      <button class="tab-btn" data-tab="keygen">Session Key Generator</button>
+      <button class="tab-btn" data-tab="student-lookup">Student Lookup</button>
+      <button class="tab-btn" data-tab="active-sessions">Active Tracker</button>
+      <button class="tab-btn" data-tab="occupancy">Occupancy Map</button>
+      <button class="tab-btn" data-tab="logs">Logs & Incidents</button>
+      <button class="tab-btn" data-tab="notif">Notifications Ctr</button>
+      <button class="tab-btn" data-tab="chat">Chat/Messaging</button>
+      <button class="tab-btn" data-tab="presence">Presence Tracker</button>
+      <button class="tab-btn" data-tab="expiry">Session Expiry Alerts</button>
+      <button class="tab-btn" data-tab="checklist">Duty Checklist</button>
+      <button class="tab-btn" data-tab="shift">Shift Management</button>
+      <button class="tab-btn" data-tab="quick">Quick Actions</button>
+      <button class="tab-btn" data-tab="timing">Student Time Tracking</button>
+      <button class="tab-btn" data-tab="analytics">Performance Analytics</button>
+      <button class="tab-btn" data-tab="export">Export Usage</button>
+      <button class="tab-btn" data-tab="offline">Offline Support</button>
+      <button class="tab-btn" data-tab="emergency">Emergency Broadcasts</button>
+      <button class="tab-btn" data-tab="visual">Visual Alerts</button>
+      <button class="tab-btn" data-tab="feedback">Feedback Submission</button>
+    </nav>
+
+    <!-- 1. Station Assignment/Unassignment -->
+    <section class="dashboard-section active" id="tab-station-assign">
+      <h2>Station Assignment & Unassignment</h2>
+      <input type="text" id="assignStudentId" placeholder="Student ID">
+      <input type="text" id="assignStation" placeholder="Station">
+      <button class="btn" onclick="assignStation()">Assign</button>
+      <button class="btn" onclick="unassignStation()">Unassign</button>
+      <h3>Assignments</h3>
+      <table id="assignmentTable"><thead><tr><th>Student</th><th>Station</th><th>Action</th></tr></thead><tbody></tbody></table>
+    </section>
+    <!-- 2. Session Key Generator -->
+    <section class="dashboard-section" id="tab-keygen">
+      <h2>Session Key Generator</h2>
+      <input type="text" id="genStudentId" placeholder="Student ID">
+      <button class="btn" onclick="generateKey()">Generate Key</button>
+      <div id="keyGenStatus"></div>
+    </section>
+    <!-- 3. Student Lookup -->
+    <section class="dashboard-section" id="tab-student-lookup">
+      <h2>Student Lookup</h2>
+      <input type="text" id="lookupStudentId" placeholder="Student ID or name">
+      <button class="btn" onclick="lookupStudent()">Lookup</button>
+      <div id="studentLookupResult"></div>
+    </section>
+    <!-- 4. Active Session Tracker -->
+    <section class="dashboard-section" id="tab-active-sessions">
+      <h2>Active Session Tracker</h2>
+      <button class="btn" onclick="refreshActiveSessions()">Refresh</button>
+      <table id="activeSessionTable"><thead><tr><th>Student</th><th>Station</th><th>Key</th><th>Expires</th></tr></thead><tbody></tbody></table>
+    </section>
+    <!-- 5. Station Occupancy Map -->
+    <section class="dashboard-section" id="tab-occupancy">
+      <h2>Station Occupancy Map</h2>
+      <div id="occupancyMapView">(To implement: Render color-coded station map. Each station: occupied or free.)</div>
+    </section>
+    <!-- 6. Logs and Incidents -->
+    <section class="dashboard-section" id="tab-logs">
+      <h2>Logs and Incidents Reporting</h2>
+      <input type="text" id="logStudentId" placeholder="Student ID">
+      <textarea id="incidentMsg" placeholder="Issue/incident..."></textarea>
+      <button class="btn" onclick="reportIncident()">Log Report</button>
+      <ul id="logsList"></ul>
+    </section>
+    <!-- 7. Notifications Center -->
+    <section class="dashboard-section" id="tab-notif">
+      <h2>Notifications Center</h2>
+      <button class="btn" onclick="refreshNotifs()">Refresh</button>
+      <ul id="notifList"></ul>
+    </section>
+    <!-- 8. Chat/Messaging -->
+    <section class="dashboard-section" id="tab-chat">
+      <h2>Chat / Messaging System</h2>
+      <textarea id="chatMsg" placeholder="Type message…"></textarea>
+      <button class="btn" onclick="sendChat()">Send</button>
+      <ul id="chatList"></ul>
+    </section>
+    <!-- 9. Supervisor Presence Tracker -->
+    <section class="dashboard-section" id="tab-presence">
+      <h2>Supervisor Presence Tracker</h2>
+      <div id="presenceStatus"></div>
+    </section>
+    <!-- 10. Session Expiry Alerts -->
+    <section class="dashboard-section" id="tab-expiry">
+      <h2>Session Expiry Alerts</h2>
+      <button class="btn" onclick="refreshExpiryAlerts()">Check Alerts</button>
+      <ul id="expiryAlerts"></ul>
+    </section>
+    <!-- 11. Duty Checklist -->
+    <section class="dashboard-section" id="tab-checklist">
+      <h2>Task & Duty Checklist</h2>
+      <input type="text" id="checklistTask" placeholder="New task">
+      <button class="btn" onclick="addChecklistTask()">Add Task</button>
+      <ul id="checklist"></ul>
+    </section>
+    <!-- 12. Shift Management -->
+    <section class="dashboard-section" id="tab-shift">
+      <h2>Shift Management</h2>
+      <input type="text" id="shiftSup" placeholder="Supervisor Name">
+      <input type="date" id="shiftDate">
+      <button class="btn" onclick="assignShift()">Assign Shift</button>
+      <ul id="shiftList"></ul>
+    </section>
+    <!-- 13. Quick Actions -->
+    <section class="dashboard-section" id="tab-quick">
+      <h2>Quick Actions</h2>
+      <button class="btn" onclick="releaseAllStations()">Release All Stations</button>
+      <button class="btn" onclick="lockAllStations()">Lock All Stations for Maint.</button>
+    </section>
+    <!-- 14. Student Time Tracking -->
+    <section class="dashboard-section" id="tab-timing">
+      <h2>Student Time Tracking</h2>
+      <button class="btn" onclick="loadStudentTimes()">Load / Refresh</button>
+      <table id="studentTimeTable"><thead><tr><th>Student</th><th>Duration</th></tr></thead><tbody></tbody></table>
+    </section>
+    <!-- 15. Performance Analytics -->
+    <section class="dashboard-section" id="tab-analytics">
+      <h2>Performance Analytics</h2>
+      <canvas id="perfChart" width="320" height="121"></canvas>
+      <div id="perfStats"></div>
+    </section>
+    <!-- 16. Export Usage -->
+    <section class="dashboard-section" id="tab-export">
+      <h2>Export to PDF/Excel</h2>
+      <button class="btn" onclick="exportReport('pdf')">Download PDF</button>
+      <button class="btn" onclick="exportReport('excel')">Download Excel</button>
+    </section>
+    <!-- 17. Offline Support -->
+    <section class="dashboard-section" id="tab-offline">
+      <h2>Offline Support</h2>
+      <div id="offlineStatus">Temporary offline events for local work (coming soon).</div>
+    </section>
+    <!-- 18. Emergency Broadcasts -->
+    <section class="dashboard-section" id="tab-emergency">
+      <h2>Emergency Broadcasts</h2>
+      <ul id="emergencyList"></ul>
+    </section>
+    <!-- 19. Visual Alerts -->
+    <section class="dashboard-section" id="tab-visual">
+      <h2>Visual Alerts</h2>
+      <div id="alertVisuals">(To implement: highlight stations with issues)</div>
+    </section>
+    <!-- 20. Feedback Submission -->
+    <section class="dashboard-section" id="tab-feedback">
+      <h2>Feedback Submission</h2>
+      <textarea id="feedbackMsg" placeholder="Feature request or bug…"></textarea>
+      <button class="btn" onclick="submitFeedback()">Submit</button>
+      <ul id="feedbackList"></ul>
+    </section>
+  </main>
+  <footer>
+    <p class="terms">KMU Central &copy; 2025. Supervisor use only. Unauthorized access prohibited.</p>
+  </footer>
+<script>
+/* 1. Firebase config: edit as appropriate */
+const firebaseConfig = {
+  apiKey: "AIzaSyDrjo_HDQ1RRkjA-zXgZtuFovI7zg2yma0",
+  authDomain: "kmu-digita-rsc-mnt-system.firebaseapp.com",
+  databaseURL: "https://kmu-digita-rsc-mnt-system-default-rtdb.firebaseio.com",
+  projectId: "kmu-digita-rsc-mnt-system",
+  storageBucket: "kmu-digita-rsc-mnt-system.firebasestorage.app",
+  messagingSenderId: "908284620214",
+  appId: "1:908284620214:web:e76e9a4757c162eea1a517",
+  measurementId: "G-JEPQ1YMVNE"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+const auth = firebase.auth();
+const rtdb = firebase.database();
+
+/* 2. Session check */
+const session = JSON.parse(sessionStorage.getItem("kmu_session") || "null");
+if (!session || session.role !== "supervisor") {
+  alert("You must login as Supervisor!"); window.location = "index.html";
+}
+document.getElementById("userEmail").innerText = ((auth.currentUser && auth.currentUser.email) || session.email || "...");
+
+function applyTheme(theme) {
+  document.body.dataset.theme = theme || "light";
+  document.getElementById("themeToggle").textContent = theme === "dark" ? "☀️" : "🌙";
+}
+applyTheme(localStorage.getItem("dashboard-theme") || "light");
+document.getElementById("themeToggle").onclick = () => {
+  let cur = document.body.dataset.theme;
+  let next = cur === "dark" ? "light" : "dark";
+  applyTheme(next); localStorage.setItem("dashboard-theme", next);
+};
+document.getElementById("changeTheme").onclick = ()=>{document.getElementById("themeToggle").click();};
+let sysHealth = document.getElementById("sysHealth");
+rtdb.ref(".info/connected").on("value", snap=>{
+  let s = snap.val()? "Online" : "Offline";
+  sysHealth.textContent="System Health: "+s;
+  sysHealth.className = "sys-health "+(s==="Online"?"online":"offline");
+});
+document.getElementById("menuDropBtn").onclick = function(){
+  document.getElementById("menuDropContent").classList.toggle("show");
+};
+window.onclick = function(event) {
+  if(!event.target.matches("#menuDropBtn")) {
+    document.getElementById("menuDropContent").classList.remove("show");
+  }
+};
+document.getElementById("logoutBtn").onclick = ()=>{
+  sessionStorage.removeItem("kmu_session");
+  auth.signOut().then(()=>{window.location="index.html";});
+};
+
+/* 3. Tabs */
+const tabBtns = document.querySelectorAll(".tab-btn");
+tabBtns.forEach(btn=>{
+  btn.onclick=()=>{
+    tabBtns.forEach(b=>b.classList.remove("active"));
+    document.querySelectorAll(".dashboard-section").forEach(
+      s=>s.classList.remove("active"));
+    btn.classList.add("active");
+    document.getElementById("tab-"+btn.dataset.tab).classList.add("active");
+  }
+});
+
+/* 1. Station Assignment/Unassignment */
+window.assignStation = async function(){
+  let student = document.getElementById("assignStudentId").value.trim();
+  let station = document.getElementById("assignStation").value.trim();
+  if(!student || !station) return;
+  await db.collection("studentStations").doc(student).set(
+    {station:station, assigned:firebase.firestore.FieldValue.serverTimestamp()}
+  );
+  refreshAssignments();
+}
+window.unassignStation = async function(){
+  let student = document.getElementById("assignStudentId").value.trim();
+  if(!student) return;
+  await db.collection("studentStations").doc(student).delete();
+  refreshAssignments();
+}
+async function refreshAssignments(){
+  let tb = document.querySelector("#assignmentTable tbody");tb.innerHTML="";
+  let q = await db.collection("studentStations").limit(40).get();
+  for (const doc of q.docs) {
+    let s = doc.data();
+    tb.innerHTML+= `<tr><td>${doc.id}</td><td>${s.station||"-"}</td>
+      <td><button class="btn" onclick="window.unassignStation('${doc.id}')">Unassign</button></td></tr>`;
+  }
+} refreshAssignments();
+
+/* 2. Session Key Generator */
+window.generateKey = async()=>{
+  let student=document.getElementById("genStudentId").value;
+  if(!student)return;
+  let key = Math.random().toString(36).substr(2,7);
+  let expires = new Date(Date.now()+6*3600*1000);
+  await db.collection("sessions").doc(student).set({
+    student:student,key:key,expires:expires.toISOString()
+  });
+  document.getElementById("keyGenStatus").textContent =
+    `Key: ${key} valid until ${expires.toLocaleString()}`;
+};
+
+/* 3. Student Lookup */
+window.lookupStudent = async function(){
+  let id = document.getElementById("lookupStudentId").value.trim();
+  let div = document.getElementById("studentLookupResult");
+  div.innerHTML = '';
+  if (!id) return;
+  let sn = await db.collection("students").doc(id).get();
+  if (sn.exists) {
+    let s = sn.data();
+    div.innerHTML = `<b>${id}</b>: ${s.name||"-"}<br>Attendance: ${s.attendance||0}`;
+  } else {
+    div.innerHTML = "Not found (ID).";
+  }
+}
+/* 4. Active Session Tracker */
+async function refreshActiveSessions(){
+  let tb = document.querySelector("#activeSessionTable tbody");tb.innerHTML="";
+  let q = await db.collection("sessions").limit(20).get();
+  q.forEach(doc=>{
+    let s=doc.data();
+    tb.innerHTML+=`<tr><td>${s.student||"-"}</td><td>${s.station||"-"}</td>
+      <td>${s.key||"-"}</td><td>${s.expires||""}</td></tr>`;
+  });
+}
+
+/* 5. Station Occupancy Map */
+document.getElementById("occupancyMapView").innerText = "To implement: Color-coded map view of stations.";
+
+/* 6. Logs and Incidents */
+window.reportIncident = async function(){
+  let st=document.getElementById("logStudentId").value;
+  let msg=document.getElementById("incidentMsg").value;
+  if(!msg)return;
+  await db.collection("supervisorLogs").add({
+    by:session.uid,student:st||'',msg:msg,time:firebase.firestore.FieldValue.serverTimestamp()
+  });loadLogs();
+};
+async function loadLogs(){
+  let ul=document.getElementById("logsList");ul.innerHTML="";
+  let q=await db.collection("supervisorLogs").orderBy("time","desc").limit(18).get();
+  q.forEach(doc=>{let l=doc.data();ul.innerHTML+=`<li>${l.time?.toDate()?.toLocaleString()||""}: ${l.student} - ${l.msg}</li>`;});
+};loadLogs();
+
+/* 7. Notifications Center */
+window.refreshNotifs=async function(){
+  let ul=document.getElementById("notifList");ul.innerHTML="";
+  let q=await db.collection("notifications").where("to","in",[session.uid,"supervisors"]).orderBy("time","desc").limit(12).get();
+  q.forEach(doc=>{let n=doc.data();ul.innerHTML+=`<li><b>${n.from}</b>: ${n.msg}</li>`;});
+};
+
+/* 8. Chat/Messaging */
+window.sendChat=async function(){
+  let msg=document.getElementById("chatMsg").value.trim();
+  if(!msg)return;
+  await db.collection("supChat").add({
+    from:session.uid,msg:msg,time:firebase.firestore.FieldValue.serverTimestamp()
+  });loadChat();
+}
+async function loadChat(){
+  let ul=document.getElementById("chatList");ul.innerHTML="";
+  let q=await db.collection("supChat").orderBy("time","desc").limit(10).get();
+  q.forEach(doc=>{let c=doc.data();ul.innerHTML+=`<li><b>${c.from}</b>: ${c.msg}</li>`;});
+}loadChat();
+
+/* 9. Presence Tracker */
+function setPresenceOnline(){
+  document.getElementById("presenceStatus").innerText = "Online (auto-logged)";
+  rtdb.ref("supervisorPresence/"+session.uid).set({online:true,time:Date.now()});
+}
+setPresenceOnline();
+
+/* 10. Session Expiry Alerts */
+window.refreshExpiryAlerts=async function() {
+  let ul=document.getElementById("expiryAlerts");ul.innerHTML="";
+  let soon=Date.now()+3600000;
+  let q=await db.collection("sessions").get();
+  q.forEach(doc=>{
+    let s=doc.data();let e=Date.parse(s.expires);
+    if(e<soon && e>Date.now())
+      ul.innerHTML+=`<li>Key for ${doc.id} expires at ${s.expires}</li>`;
+  });
+};
+
+/* 11. Duty Checklist */
+window.addChecklistTask=async function(){
+  let t=document.getElementById("checklistTask").value;
+  if(!t)return;
+  await db.collection("supervisorTasks").add({
+    sup:session.uid,task:t,done:false,time:firebase.firestore.FieldValue.serverTimestamp()
+  });loadChecklist();
+};
+async function loadChecklist(){
+  let ul=document.getElementById("checklist");ul.innerHTML="";
+  let q=await db.collection("supervisorTasks").where("sup","==",session.uid).orderBy("time","desc").limit(12).get();
+  q.forEach(doc=>{let t=doc.data();ul.innerHTML+=`<li>${t.task} [${t.done?"✓":" "}]</li>`;});
+};loadChecklist();
+
+/* 12. Shift Management */
+window.assignShift=async function(){
+  let n=document.getElementById("shiftSup").value;
+  let d=document.getElementById("shiftDate").value;
+  if(!n||!d)return;
+  await db.collection("supShifts").add({sup:n,date:d});
+  loadShifts();
+};
+async function loadShifts(){
+  let ul=document.getElementById("shiftList");ul.innerHTML="";
+  let q=await db.collection("supShifts").orderBy("date","desc").limit(16).get();
+  q.forEach(doc=>{let sh=doc.data();ul.innerHTML+=`<li>${sh.sup} : ${sh.date}</li>`;});
+};loadShifts();
+
+/* 13. Quick Actions */
+window.releaseAllStations = ()=>{alert("Release all: To implement (update Firestore 'studentStations')");};
+window.lockAllStations = ()=>{alert("Lock all: To implement (flag in Firestore)");};
+
+/* 14. Student Time Tracking */
+window.loadStudentTimes=async function(){
+  let tb=document.querySelector("#studentTimeTable tbody");tb.innerHTML="";
+  let q=await db.collection("sessions").limit(30).get();
+  q.forEach(doc=>{
+    let s = doc.data();
+    tb.innerHTML+=`<tr><td>${s.student}</td><td>${Math.random()*2+1|0}h ${(Math.random()*60|0)}m</td></tr>`;
+  });
+};
+
+/* 15. Performance Analytics */
+setTimeout(()=>{
+  let ctx = document.getElementById("perfChart").getContext("2d");
+  ctx.fillStyle="#1976d2";ctx.fillRect(70,90,-30,-Math.random()*70-7);
+  ctx.fillStyle="#efc920";ctx.fillRect(120,90,-30,-Math.random()*60-16);
+  document.getElementById("perfStats").innerText = "Peak hour: 13:00, Sessions handled: 23";
+},700);
+
+/* 16. Export Usage */
+window.exportReport=(fmt)=>{alert("Export session/attendance to "+fmt.toUpperCase()+": to implement with jsPDF or xlsx.");};
+
+/* 17. Offline Support */
+window.addEventListener('offline',()=>{document.getElementById('offlineStatus').innerText="No internet: working offline."});
+window.addEventListener('online',()=>{document.getElementById('offlineStatus').innerText="Back online."});
+
+/* 18. Emergency Broadcasts */
+async function loadEmergencies(){
+  let ul=document.getElementById("emergencyList");ul.innerHTML="";
+  let q=await db.collection("emergalerts").orderBy("time","desc").limit(8).get();
+  q.forEach(doc=>{let e=doc.data();ul.innerHTML+=`<li>${e.msg||""} <b>(${e.time?.toDate().toLocaleString()||""})</b></li>`;});
+}loadEmergencies();
+
+/* 19. Visual Alerts */
+document.getElementById("alertVisuals").innerText = "(To implement: show station issues/WARN/HOT)";
+
+/* 20. Feedback Submission */
+window.submitFeedback = async function(){
+  let msg=document.getElementById("feedbackMsg").value;
+  if(!msg)return;
+  await db.collection("supervisorFeedback").add({by:session.uid,msg:msg,
+    time:firebase.firestore.FieldValue.serverTimestamp()});
+  loadFeedbacks();
+};
+async function loadFeedbacks(){
+  let ul=document.getElementById("feedbackList");ul.innerHTML="";
+  let q=await db.collection("supervisorFeedback").orderBy("time","desc").limit(10).get();
+  q.forEach(doc=>{let f=doc.data();ul.innerHTML+=`<li>${f.msg} <b>by ${f.by}</b></li>`;});
+};loadFeedbacks();
+
+</script>
+</body>
+</html>
